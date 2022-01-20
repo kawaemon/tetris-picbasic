@@ -6,4 +6,13 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file("bindings.h");
+
+    cc::Build::new()
+        .out_dir(".")
+        .opt_level_str("s")
+        .file("src/run.c")
+        .compile("liblogic.a");
+
+    println!("cargo:rustc-link-search=.");
+    println!("cargo:rustc-link-lib=logic");
 }

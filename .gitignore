@@ -1,3 +1,5 @@
 /target
 /JetBrainsMono-Medium.ttf
 /bindings.h
+/src/run.o
+/liblogic.a

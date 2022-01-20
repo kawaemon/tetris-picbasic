@@ -37,6 +37,11 @@ fn main() {
     };
 
     let mut lcd_buffer = [['a' as u8; 20]; 4];
+    let mut tickcontext = ffi::TickContext {
+        variables: ffi::TickVariables {
+            lcd_buffer: lcd_buffer.as_mut_ptr() as _
+        }
+    };
 
     let mut event_pump = sdl.event_pump().unwrap();
 
@@ -54,6 +59,12 @@ fn main() {
 
         canvas.set_draw_color(LCD_BACKGROUND);
         canvas.clear();
+
+        extern "C" {
+            fn tick(ctx: *mut ffi::TickContext);
+        }
+
+        unsafe { tick(&mut tickcontext as _); }
 
         font_renderer.render_buffer(&mut canvas, &lcd_buffer, (40, 40));
 

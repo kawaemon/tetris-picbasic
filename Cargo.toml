@@ -12,3 +12,4 @@ features = ["ttf"]
 
 [build-dependencies]
 cbindgen = "0.20.0"
+cc = "1.0.72"
