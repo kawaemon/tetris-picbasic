@@ -9,3 +9,6 @@ edition = "2021"
 version = "0.35"
 default-features = false
 features = ["ttf"]
+
+[build-dependencies]
+cbindgen = "0.20.0"

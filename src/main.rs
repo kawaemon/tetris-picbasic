@@ -10,6 +10,8 @@ use sdl2::{
 
 use std::{collections::HashMap, time::Duration};
 
+mod ffi;
+
 const LCD_BACKGROUND: Color = Color::RGB(0x59, 0x98, 0x1A);
 
 fn main() {
