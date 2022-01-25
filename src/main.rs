@@ -38,10 +38,10 @@ fn main() {
 
     let mut lcd_buffer = [['a' as u8; 20]; 4];
     let mut tickcontext = ffi::TickContext {
-        variables: ffi::TickVariables {
-            lcd_buffer: lcd_buffer.as_mut_ptr() as _
-        }
+        variables: ffi::TickVariables::default(),
     };
+
+    tickcontext.variables.lcd_buffer = &mut lcd_buffer as *mut _ as _;
 
     let mut event_pump = sdl.event_pump().unwrap();
 
@@ -66,10 +66,10 @@ fn main() {
 
         unsafe { tick(&mut tickcontext as _); }
 
-        font_renderer.render_buffer(&mut canvas, &lcd_buffer, (40, 40));
+        font_renderer.render_buffer(&mut canvas, &lcd_buffer, (250, 40));
 
         canvas.present();
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(1000));
     }
 }
 
@@ -94,7 +94,12 @@ impl<'tc> FontRenderCache<'tc> {
         });
 
         canvas
-            .copy(texture, None, Rect::new(pos.0, pos.1, size.0, size.1))
+            .copy_ex(texture, None, Rect::new(pos.0, pos.1, size.0, size.1),
+            90.0,
+            None,
+            false,
+            false
+        )
             .unwrap();
 
         *size
@@ -109,12 +114,12 @@ impl<'tc> FontRenderCache<'tc> {
 
             for row in 0..20 {
                 let drew = self.render(canvas, c[col][row], (x, y));
-                x += drew.0 as i32;
+                y += drew.0 as i32;
                 y_max = y_max.max(drew.1);
             }
 
-            x = pos.0 as i32;
-            y += y_max as i32;
+            y = pos.1 as i32;
+            x -= y_max as i32;
         }
     }
 }
