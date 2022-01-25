@@ -118,7 +118,7 @@ void INLINE_IN_PICBASIC place_mino(TickVariables *v, byte mino_type) {
             LCDBUF_XY(3, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(3, 1) = FALLING_BLOCK_CHAR;
 
-            switch(v->i) {
+            switch(mino_type) {
                 case MINO_TYPE_O:
                     LCDBUF_XY(2, 1) = FALLING_BLOCK_CHAR;
                     break;

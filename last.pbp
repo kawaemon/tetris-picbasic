@@ -1,0 +1,126 @@
+DEFINE OSC 20
+
+define LCD_DREG PORTB
+DEFINE LCD_DBIT 0
+
+DEFINE LCD_RSREG PORTA
+DEFINE LCD_RSBIT 4
+
+DEFINE LCD_EREG PORTA
+DEFINE LCD_EBIT 3
+
+DEFINE LCD_BITS 4
+DEFINE LCD_LINES 4
+
+DEFINE LCD_COMMANDUS 2000
+DEFINE LCD_DATAUS 50
+
+CMCON = %00000111
+ADCON0 = 0
+ANSEL = 0
+TRISA = 0
+TRISB = 0
+
+false con 0
+true con 1
+
+FALLING_BLOCK_CHAR con "D"
+STABLE_BLOCK_CHAR  con "O"
+AIR_BLOCK_CHAR     con "."
+MINO_TYPES_LEN     con 7
+MINO_TYPE_I        con 0
+MINO_TYPE_O        con 1
+MINO_TYPE_T        con 2
+MINO_TYPE_J        con 3
+MINO_TYPE_L        con 4
+MINO_TYPE_S        con 5
+MINO_TYPE_Z        con 6
+
+lcd_buffer var byte[80]
+i          var byte
+j          var byte
+k          var byte
+gaming     var byte
+rand_x     var byte
+rand_y     var byte
+rand_z     var byte
+rand_t     var byte
+
+for i = 0 to 79
+    lcd_buffer[i] = AIR_BLOCK_CHAR
+next i
+
+main:
+    lcd_buffer[3] = "A"
+    lcd_buffer[23] = "B"
+    lcd_buffer[43] = "C"
+    lcd_buffer[63] = "D"
+    gosub apply_lcd
+    pause 1000
+goto main
+
+
+; uses: i
+apply_lcd:
+    lcdout $fe, $80
+
+    for i = 0 to 19
+        lcdout lcd_buffer[i]
+    next i
+    for i = 40 to 59
+        lcdout lcd_buffer[i]
+    next i
+
+    lcdout $fe, $c0
+    for i = 20 to 39
+        lcdout lcd_buffer[i]
+    next i
+    for i = 60 to 79
+        lcdout lcd_buffer[i]
+    next i
+    return
+
+
+next_rand:
+    rand_t = rand_x ^ rand_x << 1
+    rand_x = rand_y
+    rand_y = rand_z
+    rand_z = rand_z ^ (rand_z >> 3 ^ rand_t ^ rand_t >> 5)
+    return
+
+
+; TODO: inline?
+; i: mino_type
+place_mino:
+    select case i
+        case MINO_TYPE_I
+            lcd_buffer[0+20*2] = FALLING_BLOCK_CHAR
+            lcd_buffer[1+20*2] = FALLING_BLOCK_CHAR
+            lcd_buffer[2+20*2] = FALLING_BLOCK_CHAR
+            lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
+
+        case MINO_TYPE_J
+            lcd_buffer[2+20*3] = FALLING_BLOCK_CHAR
+            lcd_buffer[3+20*3] = FALLING_BLOCK_CHAR
+            lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
+            lcd_buffer[3+20*1] = FALLING_BLOCK_CHAR
+
+        case else
+            lcd_buffer[2+20*2] = FALLING_BLOCK_CHAR
+            lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
+            lcd_buffer[3+20*1] = FALLING_BLOCK_CHAR
+
+            select case i
+                case MINO_TYPE_O
+                    lcd_buffer[2+20*1] = FALLING_BLOCK_CHAR
+                case MINO_TYPE_T
+                    lcd_buffer[3+20*3] = FALLING_BLOCK_CHAR
+                case MINO_TYPE_L
+                    lcd_buffer[1+20*2] = FALLING_BLOCK_CHAR
+                case MINO_TYPE_S
+                    lcd_buffer[4+20*1] = FALLING_BLOCK_CHAR
+                case MINO_TYPE_Z
+                    lcd_buffer[2+20*3] = FALLING_BLOCK_CHAR
+            end select
+    end select
+    return
