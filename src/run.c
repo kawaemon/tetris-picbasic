@@ -26,6 +26,7 @@ typedef uint16_t word;
 
 #define FALLING_BLOCK_CHAR 'D'
 #define STABLE_BLOCK_CHAR 'O'
+#define AIR_BLOCK_CHAR '.'
 
 #define MINO_TYPES_LEN 7
 
@@ -139,40 +140,64 @@ void INLINE_IN_PICBASIC place_mino(TickVariables *v, byte mino_type) {
 
 void tick(TickContext *ctx) {
     TickVariables *v = &ctx->variables;
-
-    for (byte i = 0; i < 80; i++) {
-        v->lcd_buffer[i] = '.';
-    }
-
-    if (v->i == MINO_TYPES_LEN) {
-        v->i = 0;
-    }
-
-    place_mino(v, v->i);
-    v->i += 1;
-    printf("%d\n", v->i);
-
-    return;
     
     if (!v->gaming) {
         for (v->i = 0; v->i < 80; v->i++) {
-            v->lcd_buffer[v->i] = ' ';
+            v->lcd_buffer[v->i] = AIR_BLOCK_CHAR;
         }
 
         v->gaming = true;
     }
 
-    // 落下中のブロックがない？
+    // v->i: 落下中のブロックがある?
+    // v->j: iterator
     v->i = false;
-    for (v->i = 0; v->i < 80; v->i++) {
-        if (v->lcd_buffer[v->i] == FALLING_BLOCK_CHAR) {
+    for (v->j = 0; v->j < 80; v->j++) {
+        if (v->lcd_buffer[v->j] == FALLING_BLOCK_CHAR) {
             v->i = true;
             break;
         }
     }
 
-    if (v->i) {
+    if (!v->i) {
         next_rand(v);
         v->i = v->rand_z % MINO_TYPES_LEN;
+        place_mino(v, v->i);
+        return;
+    }
+
+    // i: y axis in game, x axis on LCD
+    // j: x axis in game, y axis on LCD
+    // k: true if cant fall anymore
+    v->k = false;
+    for(v->i = 20; v->i-- > 0;) {
+        for (v->j = 0; v->j < 4; v->j++) {
+            if (
+                LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
+               (v->i+1 == 20 || LCDBUF_XY(v->i+1, v->j) == STABLE_BLOCK_CHAR)
+            ) {
+                v->k = true;
+                goto outside_of_fall_check_loop;
+            }
+        }
+    }
+
+outside_of_fall_check_loop:
+    if (v->k == true) {
+        for(v->i = 0; v->i < 80; v->i++) {
+            if (v->lcd_buffer[v->i] == FALLING_BLOCK_CHAR) {
+                v->lcd_buffer[v->i] = STABLE_BLOCK_CHAR;
+            }
+        }
+        return;
+    }
+
+    for(v->i = 20; v->i-- > 0;) {
+        for (v->j = 0; v->j < 4; v->j++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
+                LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
+                LCDBUF_XY(v->i+1, v->j) = FALLING_BLOCK_CHAR;
+            }
+        }
     }
 }

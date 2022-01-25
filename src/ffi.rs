@@ -9,6 +9,8 @@ pub struct TickVariables {
 
     // temps
     pub i: u8,
+    pub j: u8,
+    pub k: u8,
 
     // states
     pub gaming: bool,
@@ -26,6 +28,8 @@ impl Default for TickVariables {
         Self {
             lcd_buffer: 0 as _,
             i: 0,
+            j: 0,
+            k: 0,
             gaming: false,
             rand_x:1,
             rand_y:2,
