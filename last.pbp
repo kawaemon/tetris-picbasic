@@ -51,12 +51,56 @@ for i = 0 to 79
 next i
 
 main:
-    lcd_buffer[3] = "A"
-    lcd_buffer[23] = "B"
-    lcd_buffer[43] = "C"
-    lcd_buffer[63] = "D"
     gosub apply_lcd
     pause 1000
+
+    ; i: true if there are falling block
+    ; j: iterator
+    i = false
+    for j = 0 to 79
+        if lcd_buffer[j] == FALLING_BLOCK_CHAR then
+            i = true
+            goto outside_for_1
+        endif
+    next j
+
+outside_for_1:
+    if i == false then
+        gosub next_rand
+        i = rand_z // MINO_TYPES_LEN
+        gosub place_mino
+        goto main
+    endif
+
+    k = false
+    for i = 19 to 0 step -1
+        for j = 0 to 3
+            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR &&_
+               (i+1 == 20 || lcd_buffer[j*20+i+1] == STABLE_BLOCK_CHAR) then
+                k = true
+                goto outside_for_2
+            endif
+        next j
+    next i
+
+outside_for_2:
+    if k == true then
+        for i = 0 to 79
+            if lcd_buffer[i] == FALLING_BLOCK_CHAR then
+                lcd_buffer[i] = STABLE_BLOCK_CHAR
+            endif
+        next i
+        goto main
+    endif
+
+    for i = 19 to 0 step -1
+        for j = 0 to 3
+            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR then
+                lcd_buffer[j*20+i] = AIR_BLOCK_CHAR
+                lcd_buffer[j*20+i+1] = FALLING_BLOCK_CHAR
+            endif
+        next j
+    next i
 goto main
 
 
