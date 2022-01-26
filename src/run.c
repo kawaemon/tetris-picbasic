@@ -3,20 +3,9 @@
 #include <stdio.h> // for debug
 #include "../bindings.h"
 
-// rules (applied to tetris logic):
-//   - no pointers
-//   - no signed values
-//   - no string literals
-//   - no local variables
-//   - use only these types: byte and word
-
 typedef uint8_t  byte;
 typedef uint16_t word;
 
-// markers
-#define INLINE_IN_PICBASIC 
-
-// utilties
 #define LCDBUF_XY(x, y) v->lcd_buffer[((y)*20)+(x)]
 
 #undef false
@@ -171,7 +160,7 @@ void move_down(TickVariables *v) {
     }
 }
 
-void INLINE_IN_PICBASIC freeze_blocks(TickVariables *v) {
+void freeze_blocks(TickVariables *v) {
     for(v->i = 0; v->i < 80; v->i++) {
         if (v->lcd_buffer[v->i] == FALLING_BLOCK_CHAR) {
             v->lcd_buffer[v->i] = STABLE_BLOCK_CHAR;
@@ -217,7 +206,7 @@ void place_mino(TickVariables *v, byte mino_type) {
     }
 }
 
-void INLINE_IN_PICBASIC reset_button_state(TickContext *ctx) {
+void reset_button_state(TickContext *ctx) {
     TickVariables *v = &ctx->variables;
 
     if (!ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) != 0) {
@@ -234,7 +223,7 @@ void INLINE_IN_PICBASIC reset_button_state(TickContext *ctx) {
     }
 }
 
-void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
+void handle_button_press(TickContext *ctx) {
     TickVariables *v = &ctx->variables;
 
     if (ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) == 0) {
