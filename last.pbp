@@ -19,14 +19,19 @@ CMCON = %00000111
 ADCON0 = 0
 ANSEL = 0
 TRISA = 0
-TRISB = 0
+TRISB = %11110000
 
 false con 0
-true con 1
+true  con 1
+high_  con 1
+low_   con 0
+
+DROPDOWN_INTERVAL  con 60
 
 FALLING_BLOCK_CHAR con "D"
 STABLE_BLOCK_CHAR  con "O"
 AIR_BLOCK_CHAR     con "."
+
 MINO_TYPES_LEN     con 7
 MINO_TYPE_I        con 0
 MINO_TYPE_O        con 1
@@ -36,16 +41,27 @@ MINO_TYPE_L        con 4
 MINO_TYPE_S        con 5
 MINO_TYPE_Z        con 6
 
-lcd_buffer var byte[80]
-i          var byte
-j          var byte
-k          var byte
-l          var byte
-gaming     var byte
-rand_x     var byte
-rand_y     var byte
-rand_z     var byte
-rand_t     var byte
+UP_BUTTON_MASK     con %00000001
+LEFT_BUTTON_MASK   con %00000010
+RIGHT_BUTTON_MASK  con %00000100
+DOWN_BUTTON_MASK   con %00001000
+
+up_button    var PORTB.4
+left_button  var PORTB.6
+right_button var PORTB.5
+down_button  var PORTB.7
+
+lcd_buffer   var byte[80]
+i            var byte
+j            var byte
+k            var byte
+l            var byte
+button_state var byte
+tick_count   var byte
+rand_x       var byte
+rand_y       var byte
+rand_z       var byte
+rand_t       var byte
 
 for i = 0 to 79
     lcd_buffer[i] = AIR_BLOCK_CHAR
@@ -53,7 +69,17 @@ next i
 
 main:
     gosub apply_lcd
-    pause 1000
+    pause 15
+
+    gosub reset_button_state
+    gosub handle_button_press
+
+    tick_count = tick_count + 1
+    if tick_count // DROPDOWN_INTERVAL != 0 then
+        goto main
+    endif
+
+    tick_count = 0
 
     ; i: true if there are falling block
     ; j: iterator
@@ -74,6 +100,7 @@ outside_for_1:
     endif
 
     gosub move_down
+
     if k == false then
         gosub freeze_blocks
     endif
@@ -110,12 +137,12 @@ move_horizontally:
 move_horizontally_l1:
             if l == 2 then
                 if j == 0 then
-                    return
+                    goto move_horizontally_l2 ; break
                 endif
                 j = j - 1
             else
                 if j == 3 then
-                    return
+                    goto move_horizontally_l2 ; break
                 endif
                 j = j + 1
             endif
@@ -124,7 +151,9 @@ move_horizontally_l1:
                 lcd_buffer[j*20+i] = AIR_BLOCK_CHAR
                 lcd_buffer[(j+l-1)*20+i] = FALLING_BLOCK_CHAR
             endif
-        goto move_horizontally_l1
+        goto move_horizontally_l1 ; continue
+        
+move_horizontally_l2:
     next i
     return
 
@@ -221,4 +250,49 @@ place_mino:
                     lcd_buffer[2+20*3] = FALLING_BLOCK_CHAR
             end select
     end select
+    return
+
+
+reset_button_state:
+    if left_button == low_ && (button_state & LEFT_BUTTON_MASK) != 0 then
+        button_state = button_state & ~LEFT_BUTTON_MASK
+    endif
+
+    if right_button == low_ && (button_state & RIGHT_BUTTON_MASK) != 0 then
+        button_state = button_state & ~RIGHT_BUTTON_MASK
+    endif
+
+    if down_button == low_ && (button_state & DOWN_BUTTON_MASK) != 0 then
+        button_state = button_state & ~DOWN_BUTTON_MASK
+    endif
+
+    if up_button == low_ && (button_state & up_BUTTON_MASK) != 0 then
+        button_state = button_state & ~UP_BUTTON_MASK
+    endif
+    return
+
+
+handle_button_press:
+    if left_button == high_ && (button_state & LEFT_BUTTON_MASK) == 0 then
+        button_state = button_state | LEFT_BUTTON_MASK
+        l = 2
+        gosub move_horizontally
+    endif
+
+    if right_button == high_ && (button_state & RIGHT_BUTTON_MASK) == 0 then
+        button_state = button_state | RIGHT_BUTTON_MASK
+        l = 0
+        gosub move_horizontally
+    endif
+
+    if down_button == high_ && (button_state & DOWN_BUTTON_MASK) == 0 then
+        button_state = button_state | DOWN_BUTTON_MASK
+        k = true
+        while k == true
+            gosub move_down
+        wend
+        gosub freeze_blocks
+        tick_count = DROPDOWN_INTERVAL - 10
+    endif
+
     return
