@@ -109,17 +109,36 @@ void move_all_falling_blocks_horizontally(TickVariables *v) {
     v->k = true;
     for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
-            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
-               (v->l == 2 ? v->j == 3 : v->j == 0 || LCDBUF_XY(v->i, v->j+v->l-1) == STABLE_BLOCK_CHAR)) {
-                v->k = false;
-                return;
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
+                if (v->l == 2 && (v->j == 3 || LCDBUF_XY(v->i, v->j+v->l-1) == STABLE_BLOCK_CHAR)) {
+                    v->k = false;
+                    return;
+                }
+
+                if (v->l == 0 && (v->j == 0 || LCDBUF_XY(v->i, v->j+v->l-1) == STABLE_BLOCK_CHAR)) {
+                    v->k = false;
+                    return;
+                }
             }
         }
     }
 
     for(v->i = 0; v->i < 20; v->i++) {
-        v->j = v->l == 2 ? 3 : 0;
-        while (v->l == 2 ? v->j-- > 0 : v->j++ != 3) {
+        if (v->l == 2) {
+            v->j = 3;
+        } else {
+            v->j = 0;
+        }
+
+        while (true) {
+            if (v->l == 2){
+                if (v->j == 0) break;
+                v->j -= 1;
+            } else {
+                if (v->j == 3) break;
+                v->j += 1;
+            }
+
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
                 LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
                 LCDBUF_XY(v->i, v->j+v->l-1) = FALLING_BLOCK_CHAR;
@@ -133,14 +152,14 @@ void move_all_falling_blocks_to_down(TickVariables *v) {
     v->k = true;
     for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
-            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR &&
                (v->i+1 == 20 || LCDBUF_XY(v->i+1, v->j) == STABLE_BLOCK_CHAR)) {
                 v->k = false;
                 return;
             }
         }
     }
-    
+
     // this reversing is essential
     for(v->i = 20; v->i-- > 0;) {
         for (v->j = 0; v->j < 4; v->j++) {
@@ -241,7 +260,7 @@ void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
 
 void tick(TickContext *ctx) {
     TickVariables *v = &ctx->variables;
-    
+
     if (!v->gaming) {
         for (v->i = 0; v->i < 80; v->i++) {
             v->lcd_buffer[v->i] = AIR_BLOCK_CHAR;
