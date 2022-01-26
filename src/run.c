@@ -105,7 +105,7 @@ void next_rand(TickVariables *v) {
 
 // l(in): 0 if move to right, 2 if move to left
 // k(out): false if failed to move
-void move_all_falling_blocks_horizontally(TickVariables *v) {
+void move_horizontally(TickVariables *v) {
     v->k = true;
     for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
@@ -123,7 +123,7 @@ void move_all_falling_blocks_horizontally(TickVariables *v) {
         }
     }
 
-    for(v->i = 0; v->i < 20; v->i++) {
+    for(v->i = 20; v->i-- > 0;) {
         if (v->l == 2) {
             v->j = 3;
         } else {
@@ -148,7 +148,7 @@ void move_all_falling_blocks_horizontally(TickVariables *v) {
 }
 
 // k(out): false if failed to move
-void move_all_falling_blocks_to_down(TickVariables *v) {
+void move_down(TickVariables *v) {
     v->k = true;
     for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
@@ -240,18 +240,18 @@ void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
     if (ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) == 0) {
         v->button_state |= LEFT_BUTTON_MASK;
         v->l = 2;
-        move_all_falling_blocks_horizontally(v);
+        move_horizontally(v);
     }
     if (ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) == 0) {
         v->button_state |= RIGHT_BUTTON_MASK;
         v->l = 0;
-        move_all_falling_blocks_horizontally(v);
+        move_horizontally(v);
     }
     if (ctx->is_down_pressed && (v->button_state & DOWN_BUTTON_MASK) == 0) {
         v->button_state |= DOWN_BUTTON_MASK;
         v->k = true;
         while (v->k) {
-            move_all_falling_blocks_to_down(v);
+            move_down(v);
         }
         freeze_blocks(v);
         v->tick_count = DROPDOWN_INTERVAL-10;
@@ -296,7 +296,7 @@ void tick(TickContext *ctx) {
         return;
     }
 
-    move_all_falling_blocks_to_down(v);
+    move_down(v);
 
     if (!v->k) {
         freeze_blocks(v);

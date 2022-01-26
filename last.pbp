@@ -40,6 +40,7 @@ lcd_buffer var byte[80]
 i          var byte
 j          var byte
 k          var byte
+l          var byte
 gaming     var byte
 rand_x     var byte
 rand_y     var byte
@@ -72,26 +73,74 @@ outside_for_1:
         goto main
     endif
 
-    k = false
-    for i = 19 to 0 step -1
+    gosub move_down
+    if k == false then
+        gosub freeze_blocks
+    endif
+goto main
+
+
+; l(in): 0 if move to right, 2 if move to left
+; k(out): false if failed to move
+move_horizontally:
+    k = true
+    for i = 0 to 20
         for j = 0 to 3
-            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR &&_
-               (i+1 == 20 || lcd_buffer[j*20+i+1] == STABLE_BLOCK_CHAR) then
-                k = true
-                goto outside_for_2
+            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR then
+                if l == 2 && (j == 3 || lcd_buffer[(j+l-1)*20+i] == STABLE_BLOCK_CHAR) then
+                    k = false
+                    return
+                endif
+
+                if l == 0 && (j == 0 || lcd_buffer[(j+l-1)*20+i] == STABLE_BLOCK_CHAR) then
+                    k = false
+                    return
+                endif
             endif
         next j
     next i
 
-outside_for_2:
-    if k == true then
-        for i = 0 to 79
-            if lcd_buffer[i] == FALLING_BLOCK_CHAR then
-                lcd_buffer[i] = STABLE_BLOCK_CHAR
+    for i = 19 to 0 step -1
+        if l == 2 then
+            j = 3
+        else
+            j = 0
+        endif
+
+move_horizontally_l1:
+            if l == 2 then
+                if j == 0 then
+                    return
+                endif
+                j = j - 1
+            else
+                if j == 3 then
+                    return
+                endif
+                j = j + 1
             endif
-        next i
-        goto main
-    endif
+
+            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR then
+                lcd_buffer[j*20+i] = AIR_BLOCK_CHAR
+                lcd_buffer[(j+l-1)*20+i] = FALLING_BLOCK_CHAR
+            endif
+        goto move_horizontally_l1
+    next i
+    return
+
+
+; k(out): false if failed to move
+move_down:
+    k = true
+    for i = 0 to 20
+        for j = 0 to 3
+            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR &&_
+               (i+1 == 20 || lcd_buffer[j*20+i+1] == STABLE_BLOCK_CHAR) then
+                k = false
+                return
+            endif
+        next j
+    next i
 
     for i = 19 to 0 step -1
         for j = 0 to 3
@@ -101,7 +150,16 @@ outside_for_2:
             endif
         next j
     next i
-goto main
+    return
+
+
+freeze_blocks:
+    for i = 0 to 79
+        if lcd_buffer[i] == FALLING_BLOCK_CHAR then
+            lcd_buffer[i] = STABLE_BLOCK_CHAR
+        endif
+    next i
+    return
 
 
 ; uses: i
@@ -143,18 +201,14 @@ place_mino:
             lcd_buffer[2+20*2] = FALLING_BLOCK_CHAR
             lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
 
-        case MINO_TYPE_J
-            lcd_buffer[2+20*3] = FALLING_BLOCK_CHAR
-            lcd_buffer[3+20*3] = FALLING_BLOCK_CHAR
-            lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
-            lcd_buffer[3+20*1] = FALLING_BLOCK_CHAR
-
         case else
             lcd_buffer[2+20*2] = FALLING_BLOCK_CHAR
             lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
             lcd_buffer[3+20*1] = FALLING_BLOCK_CHAR
 
             select case i
+                case MINO_TYPE_J
+                    lcd_buffer[0*20+3] = FALLING_BLOCK_CHAR
                 case MINO_TYPE_O
                     lcd_buffer[2+20*1] = FALLING_BLOCK_CHAR
                 case MINO_TYPE_T
