@@ -17,7 +17,7 @@ typedef uint16_t word;
 #define INLINE_IN_PICBASIC 
 
 // utilties
-#define LCDBUF_XY(x, y) v->lcd_buffer[y*20+x]
+#define LCDBUF_XY(x, y) v->lcd_buffer[((y)*20)+(x)]
 
 #undef false
 #undef true
@@ -103,47 +103,47 @@ void next_rand(TickVariables *v) {
     v->rand_z ^= v->rand_z >> 3 ^ v->rand_t ^ v->rand_t >> 5;
 }
 
-void INLINE_IN_PICBASIC reset_button_state(TickContext *ctx) {
-    TickVariables *v = &ctx->variables;
-
-    if (!ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) != 0) {
-        v->button_state &= ~LEFT_BUTTON_MASK;
-    }
-    if (!ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) != 0) {
-        v->button_state &= ~RIGHT_BUTTON_MASK;
-    }
-    if (!ctx->is_rotate_pressed && (v->button_state & ROTATE_BUTTON_MASK) != 0) {
-        v->button_state &= ~ROTATE_BUTTON_MASK;
-    }
-}
-
-void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
-    TickVariables *v = &ctx->variables;
-
-    if (ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) == 0) {
-        v->button_state |= LEFT_BUTTON_MASK;
-    }
-}
-
-// i(in): 
 // k(out): false if failed to move
-void move_all_falling_blocks_vertically(TickVariables *v) {
+void move_all_falling_blocks_left(TickVariables *v) {
     v->k = true;
-    for(v->i = 20; v->i-- > 0;) {
+    for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
-               (v->i+1 == 20 || LCDBUF_XY(v->i+1, v->j) == STABLE_BLOCK_CHAR)) {
+               (v->j+1 == 4 || LCDBUF_XY(v->i, v->j+1) == STABLE_BLOCK_CHAR)) {
                 v->k = false;
                 return;
             }
         }
     }
 
-    for(v->i = 20; v->i-- > 0;) {
+    for(v->i = 0; v->i < 20; v->i++) {
+        for (v->j = 4; v->j-- > 0;) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
+                LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
+                LCDBUF_XY(v->i, v->j+1) = FALLING_BLOCK_CHAR;
+            }
+        }
+    }
+}
+
+// k(out): false if failed to move
+void move_all_falling_blocks_right(TickVariables *v) {
+    v->k = true;
+    for(v->i = 0; v->i < 20; v->i++) {
+        for (v->j = 0; v->j < 4; v->j++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
+               (v->j == 0 || LCDBUF_XY(v->i, v->j-1) == STABLE_BLOCK_CHAR)) {
+                v->k = false;
+                return;
+            }
+        }
+    }
+
+    for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
                 LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
-                LCDBUF_XY(v->i+1, v->j) = FALLING_BLOCK_CHAR;
+                LCDBUF_XY(v->i, v->j-1) = FALLING_BLOCK_CHAR;
             }
         }
     }
@@ -152,7 +152,7 @@ void move_all_falling_blocks_vertically(TickVariables *v) {
 // k(out): false if failed to move
 void move_all_falling_blocks_to_down(TickVariables *v) {
     v->k = true;
-    for(v->i = 20; v->i-- > 0;) {
+    for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
                (v->i+1 == 20 || LCDBUF_XY(v->i+1, v->j) == STABLE_BLOCK_CHAR)) {
@@ -161,7 +161,8 @@ void move_all_falling_blocks_to_down(TickVariables *v) {
             }
         }
     }
-
+    
+    // this reversing is essential
     for(v->i = 20; v->i-- > 0;) {
         for (v->j = 0; v->j < 4; v->j++) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
@@ -214,6 +215,33 @@ void place_mino(TickVariables *v, byte mino_type) {
     }
 }
 
+void INLINE_IN_PICBASIC reset_button_state(TickContext *ctx) {
+    TickVariables *v = &ctx->variables;
+
+    if (!ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) != 0) {
+        v->button_state &= ~LEFT_BUTTON_MASK;
+    }
+    if (!ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) != 0) {
+        v->button_state &= ~RIGHT_BUTTON_MASK;
+    }
+    if (!ctx->is_rotate_pressed && (v->button_state & ROTATE_BUTTON_MASK) != 0) {
+        v->button_state &= ~ROTATE_BUTTON_MASK;
+    }
+}
+
+void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
+    TickVariables *v = &ctx->variables;
+
+    if (ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) == 0) {
+        v->button_state |= LEFT_BUTTON_MASK;
+        move_all_falling_blocks_left(v);
+    }
+    if (ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) == 0) {
+        v->button_state |= RIGHT_BUTTON_MASK;
+        move_all_falling_blocks_right(v);
+    }
+}
+
 void tick(TickContext *ctx) {
     TickVariables *v = &ctx->variables;
     
@@ -245,7 +273,7 @@ void tick(TickContext *ctx) {
         }
     }
 
-    if (!v->i) {
+    if (v->i == false) {
         next_rand(v);
         v->i = v->rand_z % MINO_TYPES_LEN;
         place_mino(v, v->i);
