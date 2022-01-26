@@ -41,6 +41,7 @@ fn main() {
         variables: ffi::TickVariables::default(),
         is_left_pressed: false,
         is_right_pressed: false,
+        is_down_pressed: false,
         is_rotate_pressed: false,
     };
 
@@ -86,6 +87,16 @@ fn main() {
                     keycode: Some(Keycode::Up),
                     ..
                 } => tickcontext.is_rotate_pressed = false,
+
+                Event::KeyDown {
+                    keycode: Some(Keycode::Down),
+                    ..
+                } => tickcontext.is_down_pressed = true,
+
+                Event::KeyUp {
+                    keycode: Some(Keycode::Down),
+                    ..
+                } => tickcontext.is_down_pressed = false,
 
                 _ => {}
             }

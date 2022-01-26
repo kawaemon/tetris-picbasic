@@ -28,7 +28,8 @@ typedef uint16_t word;
 
 #define LEFT_BUTTON_MASK   (1 << 0)
 #define RIGHT_BUTTON_MASK  (1 << 1)
-#define ROTATE_BUTTON_MASK (1 << 2)
+#define DOWN_BUTTON_MASK   (1 << 2)
+#define ROTATE_BUTTON_MASK (1 << 3)
 
 #define FALLING_BLOCK_CHAR 'D'
 #define STABLE_BLOCK_CHAR 'O'
@@ -110,7 +111,7 @@ void move_all_falling_blocks_horizontally(TickVariables *v) {
     for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
-               (v->l == 2 ? v->j+1 == 4 : v->j == 0 || LCDBUF_XY(v->i, v->j+v->l-1) == STABLE_BLOCK_CHAR)) {
+               (v->l == 2 ? v->j == 3 : v->j == 0 || LCDBUF_XY(v->i, v->j+v->l-1) == STABLE_BLOCK_CHAR)) {
                 v->k = false;
                 return;
             }
@@ -148,6 +149,14 @@ void move_all_falling_blocks_to_down(TickVariables *v) {
                 LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
                 LCDBUF_XY(v->i+1, v->j) = FALLING_BLOCK_CHAR;
             }
+        }
+    }
+}
+
+void INLINE_IN_PICBASIC freeze_blocks(TickVariables *v) {
+    for(v->i = 0; v->i < 80; v->i++) {
+        if (v->lcd_buffer[v->i] == FALLING_BLOCK_CHAR) {
+            v->lcd_buffer[v->i] = STABLE_BLOCK_CHAR;
         }
     }
 }
@@ -203,6 +212,9 @@ void INLINE_IN_PICBASIC reset_button_state(TickContext *ctx) {
     if (!ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) != 0) {
         v->button_state &= ~RIGHT_BUTTON_MASK;
     }
+    if (!ctx->is_down_pressed && (v->button_state & DOWN_BUTTON_MASK) != 0) {
+        v->button_state &= ~DOWN_BUTTON_MASK;
+    }
     if (!ctx->is_rotate_pressed && (v->button_state & ROTATE_BUTTON_MASK) != 0) {
         v->button_state &= ~ROTATE_BUTTON_MASK;
     }
@@ -220,6 +232,15 @@ void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
         v->button_state |= RIGHT_BUTTON_MASK;
         v->l = 0;
         move_all_falling_blocks_horizontally(v);
+    }
+    if (ctx->is_down_pressed && (v->button_state & DOWN_BUTTON_MASK) == 0) {
+        v->button_state |= DOWN_BUTTON_MASK;
+        v->k = true;
+        while (v->k) {
+            move_all_falling_blocks_to_down(v);
+        }
+        freeze_blocks(v);
+        v->tick_count = DROPDOWN_INTERVAL-10;
     }
 }
 
@@ -263,11 +284,7 @@ void tick(TickContext *ctx) {
 
     move_all_falling_blocks_to_down(v);
 
-    if (v->k == false) {
-        for(v->i = 0; v->i < 80; v->i++) {
-            if (v->lcd_buffer[v->i] == FALLING_BLOCK_CHAR) {
-                v->lcd_buffer[v->i] = STABLE_BLOCK_CHAR;
-            }
-        }
+    if (!v->k) {
+        freeze_blocks(v);
     }
 }

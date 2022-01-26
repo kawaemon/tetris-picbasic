@@ -3,6 +3,7 @@ pub struct TickContext {
     pub variables: TickVariables,
     pub is_left_pressed: bool,
     pub is_right_pressed: bool,
+    pub is_down_pressed: bool,
     pub is_rotate_pressed: bool,
 }
 
