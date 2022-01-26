@@ -39,6 +39,9 @@ fn main() {
     let mut lcd_buffer = [['a' as u8; 20]; 4];
     let mut tickcontext = ffi::TickContext {
         variables: ffi::TickVariables::default(),
+        is_left_pressed: false,
+        is_right_pressed: false,
+        is_rotate_pressed: false,
     };
 
     tickcontext.variables.lcd_buffer = &mut lcd_buffer as *mut _ as _;
@@ -53,6 +56,37 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'main,
+
+                Event::KeyDown {
+                    keycode: Some(Keycode::Left),
+                    ..
+                } => tickcontext.is_left_pressed = true,
+
+                Event::KeyUp {
+                    keycode: Some(Keycode::Left),
+                    ..
+                } => tickcontext.is_left_pressed = false,
+
+                Event::KeyDown {
+                    keycode: Some(Keycode::Right),
+                    ..
+                } => tickcontext.is_right_pressed = true,
+
+                Event::KeyUp {
+                    keycode: Some(Keycode::Right),
+                    ..
+                } => tickcontext.is_right_pressed = false,
+
+                Event::KeyDown {
+                    keycode: Some(Keycode::Up),
+                    ..
+                } => tickcontext.is_rotate_pressed = true,
+
+                Event::KeyUp {
+                    keycode: Some(Keycode::Up),
+                    ..
+                } => tickcontext.is_rotate_pressed = false,
+
                 _ => {}
             }
         }
@@ -64,12 +98,14 @@ fn main() {
             fn tick(ctx: *mut ffi::TickContext);
         }
 
-        unsafe { tick(&mut tickcontext as _); }
+        unsafe {
+            tick(&mut tickcontext as _);
+        }
 
         font_renderer.render_buffer(&mut canvas, &lcd_buffer, (250, 40));
 
         canvas.present();
-        std::thread::sleep(Duration::from_millis(1000));
+        std::thread::sleep(Duration::from_millis(1000 / 60));
     }
 }
 
@@ -94,12 +130,15 @@ impl<'tc> FontRenderCache<'tc> {
         });
 
         canvas
-            .copy_ex(texture, None, Rect::new(pos.0, pos.1, size.0, size.1),
-            90.0,
-            None,
-            false,
-            false
-        )
+            .copy_ex(
+                texture,
+                None,
+                Rect::new(pos.0, pos.1, size.0, size.1),
+                90.0,
+                None,
+                false,
+                false,
+            )
             .unwrap();
 
         *size

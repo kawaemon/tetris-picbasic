@@ -24,6 +24,12 @@ typedef uint16_t word;
 #define false 0
 #define true 1
 
+#define DROPDOWN_INTERVAL 60
+
+#define LEFT_BUTTON_MASK   (1 << 0)
+#define RIGHT_BUTTON_MASK  (1 << 1)
+#define ROTATE_BUTTON_MASK (1 << 2)
+
 #define FALLING_BLOCK_CHAR 'D'
 #define STABLE_BLOCK_CHAR 'O'
 #define AIR_BLOCK_CHAR '.'
@@ -97,7 +103,77 @@ void next_rand(TickVariables *v) {
     v->rand_z ^= v->rand_z >> 3 ^ v->rand_t ^ v->rand_t >> 5;
 }
 
-void INLINE_IN_PICBASIC place_mino(TickVariables *v, byte mino_type) {
+void INLINE_IN_PICBASIC reset_button_state(TickContext *ctx) {
+    TickVariables *v = &ctx->variables;
+
+    if (!ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) != 0) {
+        v->button_state &= ~LEFT_BUTTON_MASK;
+    }
+    if (!ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) != 0) {
+        v->button_state &= ~RIGHT_BUTTON_MASK;
+    }
+    if (!ctx->is_rotate_pressed && (v->button_state & ROTATE_BUTTON_MASK) != 0) {
+        v->button_state &= ~ROTATE_BUTTON_MASK;
+    }
+}
+
+void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
+    TickVariables *v = &ctx->variables;
+
+    if (ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) == 0) {
+        v->button_state |= LEFT_BUTTON_MASK;
+    }
+}
+
+// i(in): 
+// k(out): false if failed to move
+void move_all_falling_blocks_vertically(TickVariables *v) {
+    v->k = true;
+    for(v->i = 20; v->i-- > 0;) {
+        for (v->j = 0; v->j < 4; v->j++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
+               (v->i+1 == 20 || LCDBUF_XY(v->i+1, v->j) == STABLE_BLOCK_CHAR)) {
+                v->k = false;
+                return;
+            }
+        }
+    }
+
+    for(v->i = 20; v->i-- > 0;) {
+        for (v->j = 0; v->j < 4; v->j++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
+                LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
+                LCDBUF_XY(v->i+1, v->j) = FALLING_BLOCK_CHAR;
+            }
+        }
+    }
+}
+
+// k(out): false if failed to move
+void move_all_falling_blocks_to_down(TickVariables *v) {
+    v->k = true;
+    for(v->i = 20; v->i-- > 0;) {
+        for (v->j = 0; v->j < 4; v->j++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
+               (v->i+1 == 20 || LCDBUF_XY(v->i+1, v->j) == STABLE_BLOCK_CHAR)) {
+                v->k = false;
+                return;
+            }
+        }
+    }
+
+    for(v->i = 20; v->i-- > 0;) {
+        for (v->j = 0; v->j < 4; v->j++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
+                LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
+                LCDBUF_XY(v->i+1, v->j) = FALLING_BLOCK_CHAR;
+            }
+        }
+    }
+}
+
+
+void place_mino(TickVariables *v, byte mino_type) {
     switch (mino_type) {
         case MINO_TYPE_I:
             LCDBUF_XY(0, 2) = FALLING_BLOCK_CHAR;
@@ -149,6 +225,16 @@ void tick(TickContext *ctx) {
         v->gaming = true;
     }
 
+    reset_button_state(ctx);
+    handle_button_press(ctx);
+
+    v->tick_count += 1;
+    if (v->tick_count % DROPDOWN_INTERVAL != 0) {
+        return;
+    }
+
+    v->tick_count = 0;
+
     // v->i: 落下中のブロックがある?
     // v->j: iterator
     v->i = false;
@@ -166,37 +252,12 @@ void tick(TickContext *ctx) {
         return;
     }
 
-    // i: y axis in game, x axis on LCD
-    // j: x axis in game, y axis on LCD
-    // k: true if cant fall anymore
-    v->k = false;
-    for(v->i = 20; v->i-- > 0;) {
-        for (v->j = 0; v->j < 4; v->j++) {
-            if (
-                LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
-               (v->i+1 == 20 || LCDBUF_XY(v->i+1, v->j) == STABLE_BLOCK_CHAR)
-            ) {
-                v->k = true;
-                goto outside_of_fall_check_loop;
-            }
-        }
-    }
+    move_all_falling_blocks_to_down(v);
 
-outside_of_fall_check_loop:
-    if (v->k == true) {
+    if (v->k == false) {
         for(v->i = 0; v->i < 80; v->i++) {
             if (v->lcd_buffer[v->i] == FALLING_BLOCK_CHAR) {
                 v->lcd_buffer[v->i] = STABLE_BLOCK_CHAR;
-            }
-        }
-        return;
-    }
-
-    for(v->i = 20; v->i-- > 0;) {
-        for (v->j = 0; v->j < 4; v->j++) {
-            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
-                LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
-                LCDBUF_XY(v->i+1, v->j) = FALLING_BLOCK_CHAR;
             }
         }
     }
