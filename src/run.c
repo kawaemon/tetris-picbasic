@@ -103,13 +103,14 @@ void next_rand(TickVariables *v) {
     v->rand_z ^= v->rand_z >> 3 ^ v->rand_t ^ v->rand_t >> 5;
 }
 
+// l(in): 0 if move to right, 2 if move to left
 // k(out): false if failed to move
-void move_all_falling_blocks_left(TickVariables *v) {
+void move_all_falling_blocks_horizontally(TickVariables *v) {
     v->k = true;
     for(v->i = 0; v->i < 20; v->i++) {
         for (v->j = 0; v->j < 4; v->j++) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
-               (v->j+1 == 4 || LCDBUF_XY(v->i, v->j+1) == STABLE_BLOCK_CHAR)) {
+               (v->l == 2 ? v->j+1 == 4 : v->j == 0 || LCDBUF_XY(v->i, v->j+v->l-1) == STABLE_BLOCK_CHAR)) {
                 v->k = false;
                 return;
             }
@@ -117,33 +118,11 @@ void move_all_falling_blocks_left(TickVariables *v) {
     }
 
     for(v->i = 0; v->i < 20; v->i++) {
-        for (v->j = 4; v->j-- > 0;) {
+        v->j = v->l == 2 ? 3 : 0;
+        while (v->l == 2 ? v->j-- > 0 : v->j++ != 3) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
                 LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
-                LCDBUF_XY(v->i, v->j+1) = FALLING_BLOCK_CHAR;
-            }
-        }
-    }
-}
-
-// k(out): false if failed to move
-void move_all_falling_blocks_right(TickVariables *v) {
-    v->k = true;
-    for(v->i = 0; v->i < 20; v->i++) {
-        for (v->j = 0; v->j < 4; v->j++) {
-            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR && 
-               (v->j == 0 || LCDBUF_XY(v->i, v->j-1) == STABLE_BLOCK_CHAR)) {
-                v->k = false;
-                return;
-            }
-        }
-    }
-
-    for(v->i = 0; v->i < 20; v->i++) {
-        for (v->j = 0; v->j < 4; v->j++) {
-            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
-                LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
-                LCDBUF_XY(v->i, v->j-1) = FALLING_BLOCK_CHAR;
+                LCDBUF_XY(v->i, v->j+v->l-1) = FALLING_BLOCK_CHAR;
             }
         }
     }
@@ -234,11 +213,13 @@ void INLINE_IN_PICBASIC handle_button_press(TickContext *ctx) {
 
     if (ctx->is_left_pressed && (v->button_state & LEFT_BUTTON_MASK) == 0) {
         v->button_state |= LEFT_BUTTON_MASK;
-        move_all_falling_blocks_left(v);
+        v->l = 2;
+        move_all_falling_blocks_horizontally(v);
     }
     if (ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) == 0) {
         v->button_state |= RIGHT_BUTTON_MASK;
-        move_all_falling_blocks_right(v);
+        v->l = 0;
+        move_all_falling_blocks_horizontally(v);
     }
 }
 

@@ -11,9 +11,11 @@ pub struct TickVariables {
     pub lcd_buffer: *mut u8, // has 80 length
 
     // temps
+    // pain
     pub i: u8,
     pub j: u8,
     pub k: u8,
+    pub l: u8,
 
     // states
     pub gaming: bool,
@@ -35,6 +37,7 @@ impl Default for TickVariables {
             i: 0,
             j: 0,
             k: 0,
+            l: 0,
             tick_count: 0,
             button_state: 0,
             gaming: false,
