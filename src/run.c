@@ -47,9 +47,8 @@ typedef uint16_t word;
 //  s
 // xss
 #define MINO_TYPE_T 2
-// width overflows, must be placed manually
 // s
-// ssxx
+// ssx
 #define MINO_TYPE_J 3
 // x
 // s
@@ -76,7 +75,7 @@ typedef uint16_t word;
 * 0 ....
 * 1 .x..
 * 2 xsx.
-* 3 xss.
+* 3 xssx
 * 4 ..x.
 *   ....
 *   ....
@@ -171,19 +170,15 @@ void place_mino(TickVariables *v, byte mino_type) {
             LCDBUF_XY(3, 2) = FALLING_BLOCK_CHAR;
             break;
 
-        case MINO_TYPE_J:
-            LCDBUF_XY(2, 3) = FALLING_BLOCK_CHAR;
-            LCDBUF_XY(3, 3) = FALLING_BLOCK_CHAR;
-            LCDBUF_XY(3, 2) = FALLING_BLOCK_CHAR;
-            LCDBUF_XY(3, 1) = FALLING_BLOCK_CHAR;
-            break;
-
         default:
             LCDBUF_XY(2, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(3, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(3, 1) = FALLING_BLOCK_CHAR;
 
             switch(mino_type) {
+                case MINO_TYPE_J:
+                    LCDBUF_XY(3, 0) = FALLING_BLOCK_CHAR;
+                    break;
                 case MINO_TYPE_O:
                     LCDBUF_XY(2, 1) = FALLING_BLOCK_CHAR;
                     break;
