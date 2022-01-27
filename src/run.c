@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h> // for debug
+#include <unistd.h>
 #include "../bindings.h"
 
 typedef uint8_t  byte;
@@ -15,19 +16,26 @@ typedef uint16_t word;
 
 #define DROPDOWN_INTERVAL 60
 
+#define WIDTH 4
+#define HEIGHT 20
+
+#define NEG_OFFSET 50
+
 #define LEFT_BUTTON_MASK   (1 << 0)
 #define RIGHT_BUTTON_MASK  (1 << 1)
 #define DOWN_BUTTON_MASK   (1 << 2)
 #define ROTATE_BUTTON_MASK (1 << 3)
 
+#define DEFAULT_ROT_CENTER_X 2
+#define DEFAULT_ROT_CENTER_Y 1
+
 #define FALLING_BLOCK_CHAR 'D'
-#define STABLE_BLOCK_CHAR 'O'
-#define AIR_BLOCK_CHAR '.'
+#define STABLE_BLOCK_CHAR  'O'
+#define AIR_BLOCK_CHAR     '.'
 
 #define MINO_TYPES_LEN 7
 
-// S is shared with all minos except for I
-
+// S is shared blocks with all minos except for I
 // xxxx
 #define MINO_TYPE_I 0
 // sx
@@ -52,22 +60,22 @@ typedef uint16_t word;
 #define MINO_TYPE_Z 6
 
 /*
-* 
+*
 * 0,0 .................... 20,0
 *     ....................
 *     ....................
 * 0,3 .................... 20,3
 *
 * 0,3   0,0
-*  Y3210 
+*  Y3210
 * X
 * 0 ....
 * 1 .x..
 * 2 xsx.
 * 3 xssx
 * 4 ..x.
-*   ....
-*   ....
+* 5 ....
+* 6 ....
 *   ....
 *   ....
 *   ....
@@ -83,6 +91,15 @@ typedef uint16_t word;
 *   ....
 *   ....
 * 20,3  20,0
+*/
+
+/*
+* x... --> ....
+* x...     ....
+* x...     ....
+* x...     xxxx
+*
+*
 */
 
 void next_rand(TickVariables *v) {
@@ -110,6 +127,13 @@ void move_horizontally(TickVariables *v) {
                 }
             }
         }
+    }
+
+    if (v->l == 0) {
+        // right
+        v->rot_center_y -= 1;
+    } else {
+        v->rot_center_y += 1;
     }
 
     for(v->i = 20; v->i-- > 0;) {
@@ -149,6 +173,8 @@ void move_down(TickVariables *v) {
         }
     }
 
+    v->rot_center_x += 1;
+
     // this reversing is essential
     for(v->i = 20; v->i-- > 0;) {
         for (v->j = 0; v->j < 4; v->j++) {
@@ -156,6 +182,79 @@ void move_down(TickVariables *v) {
                 LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
                 LCDBUF_XY(v->i+1, v->j) = FALLING_BLOCK_CHAR;
             }
+        }
+    }
+}
+
+// i: X
+// j: Y
+// k(out): rot_X
+// l(out): rot_Y
+void rotate_pos(TickVariables *v) {
+    byte r, rotated_r, rotated_m;
+
+    r = NEG_OFFSET - v->j - 1 + v->rot_center_y;
+    if (WIDTH - v->j - 1 >= WIDTH - v->rot_center_y) {
+        r += 1;
+    }
+    rotated_m = r + HEIGHT - v->rot_center_x;
+    if (NEG_OFFSET <= r) {
+        rotated_m -= 1;
+    }
+    v->k = NEG_OFFSET + HEIGHT - rotated_m - 1;
+
+
+    r = NEG_OFFSET - v->i + v->rot_center_x - 1;
+    if (HEIGHT - v->i - 1 >= HEIGHT - v->rot_center_x) {
+        r += 1;
+    }
+
+    if (r < NEG_OFFSET) {
+        // r_y is negative
+        rotated_r = r + 2 * (NEG_OFFSET - r);
+    } else {
+        // r_y is positive
+        rotated_r = r - 2 * (r - NEG_OFFSET);
+    }
+
+    rotated_m = rotated_r + WIDTH - v->rot_center_y;
+    if (NEG_OFFSET <= rotated_r) {
+        rotated_m -= 1;
+    }
+
+    v->l = NEG_OFFSET + WIDTH - rotated_m - 1;
+}
+
+void rotate(TickVariables *v) {
+    for(v->j = 0; v->j < 20; v->j++) {
+        for (v->i = 0; v->i < 4; v->i++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
+                rotate_pos(v);
+
+                if (v->k >= 20 || v->l >= 4) {
+                    return;
+                }
+
+                if (LCDBUF_XY(v->i, v->j) == STABLE_BLOCK_CHAR) {
+                    return;
+                }
+            }
+        }
+    }
+
+    for(v->j = 0; v->j < 20; v->j++) {
+        for (v->i = 0; v->i < 4; v->i++) {
+            if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
+                rotate_pos(v);
+                LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
+                LCDBUF_XY(v->k, v->l) = 'Q';
+            }
+        }
+    }
+
+    for (v->i = 0; v->i < 80; v->i++) {
+        if (v->lcd_buffer[v->i] == 'Q') {
+            v->lcd_buffer[v->i] = FALLING_BLOCK_CHAR;
         }
     }
 }
@@ -176,12 +275,16 @@ void place_mino(TickVariables *v, byte mino_type) {
             LCDBUF_XY(1, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(2, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(3, 2) = FALLING_BLOCK_CHAR;
+            v->rot_center_x = 3;
+            v->rot_center_y = 2;
             break;
 
         default:
             LCDBUF_XY(2, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(3, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(3, 1) = FALLING_BLOCK_CHAR;
+            v->rot_center_x = DEFAULT_ROT_CENTER_X;
+            v->rot_center_y = DEFAULT_ROT_CENTER_Y;
 
             switch(mino_type) {
                 case MINO_TYPE_J:
@@ -230,11 +333,18 @@ void handle_button_press(TickContext *ctx) {
         v->button_state |= LEFT_BUTTON_MASK;
         v->l = 2;
         move_horizontally(v);
+        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
     }
     if (ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) == 0) {
         v->button_state |= RIGHT_BUTTON_MASK;
         v->l = 0;
         move_horizontally(v);
+        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
+    }
+    if (ctx->is_rotate_pressed && (v->button_state & ROTATE_BUTTON_MASK) == 0) {
+        v->button_state |= ROTATE_BUTTON_MASK;
+        rotate(v);
+        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
     }
     if (ctx->is_down_pressed && (v->button_state & DOWN_BUTTON_MASK) == 0) {
         v->button_state |= DOWN_BUTTON_MASK;
@@ -244,6 +354,7 @@ void handle_button_press(TickContext *ctx) {
         }
         freeze_blocks(v);
         v->tick_count = DROPDOWN_INTERVAL-10;
+        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
     }
 }
 
@@ -268,8 +379,6 @@ void tick(TickContext *ctx) {
 
     v->tick_count = 0;
 
-    // v->i: 落下中のブロックがある?
-    // v->j: iterator
     v->i = false;
     for (v->j = 0; v->j < 80; v->j++) {
         if (v->lcd_buffer[v->j] == FALLING_BLOCK_CHAR) {
@@ -286,6 +395,7 @@ void tick(TickContext *ctx) {
     }
 
     move_down(v);
+    printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
 
     if (!v->k) {
         freeze_blocks(v);

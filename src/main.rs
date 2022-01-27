@@ -11,6 +11,8 @@ use sdl2::{
 use std::{collections::HashMap, time::Duration};
 
 mod ffi;
+#[cfg(test)]
+mod rot;
 
 const LCD_BACKGROUND: Color = Color::RGB(0x59, 0x98, 0x1A);
 
@@ -43,6 +45,7 @@ fn main() {
         is_right_pressed: false,
         is_down_pressed: false,
         is_rotate_pressed: false,
+        is_debug_pressed: false,
     };
 
     tickcontext.variables.lcd_buffer = &mut lcd_buffer as *mut _ as _;
@@ -98,6 +101,15 @@ fn main() {
                     ..
                 } => tickcontext.is_down_pressed = false,
 
+                Event::KeyDown {
+                    keycode: Some(Keycode::Space),
+                    ..
+                } => tickcontext.is_debug_pressed = true,
+
+                Event::KeyUp {
+                    keycode: Some(Keycode::Space),
+                    ..
+                } => tickcontext.is_debug_pressed = false,
                 _ => {}
             }
         }

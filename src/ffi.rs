@@ -5,6 +5,7 @@ pub struct TickContext {
     pub is_right_pressed: bool,
     pub is_down_pressed: bool,
     pub is_rotate_pressed: bool,
+    pub is_debug_pressed: bool,
 }
 
 #[repr(C)]
@@ -22,6 +23,10 @@ pub struct TickVariables {
     pub gaming: bool,
     pub tick_count: u8,
     pub button_state: u8,
+
+    // todo: unite
+    pub rot_center_x: u8,
+    pub rot_center_y: u8,
 
     // randomizer
     pub rand_x: u8,
@@ -41,9 +46,11 @@ impl Default for TickVariables {
             l: 0,
             tick_count: 0,
             button_state: 0,
+            rot_center_x: 0,
+            rot_center_y: 0,
             gaming: false,
             rand_x: 1,
-            rand_y: 2,
+            rand_y: 4,
             rand_z: 3,
             rand_t: 4,
         }
