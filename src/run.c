@@ -348,6 +348,35 @@ void handle_button_press(TickContext *ctx) {
     }
 }
 
+void erase_filled_line(TickVariables *v) {
+    for(v->i = 20; v->i-- > 0;) { // x
+        v->k = true;
+        for (v->j = 0; v->j < 4; v->j++) { // y
+            if (LCDBUF_XY(v->i, v->j) == AIR_BLOCK_CHAR) {
+                v->k = false;
+                break;
+            }
+        }
+
+        if (!v->k) {
+            continue;
+        }
+
+        for (v->j = 0; v->j < 4; v->j++) { // y
+            LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
+        }
+
+        for(v->k = v->i+1; v->k-- > 1;) { // x
+            for (v->l = 0; v->l < 4; v->l++) { // y
+                if (LCDBUF_XY(v->k-1, v->l) != AIR_BLOCK_CHAR) {
+                    LCDBUF_XY(v->k, v->l) = LCDBUF_XY(v->k-1, v->l);
+                    LCDBUF_XY(v->k-1, v->l) = AIR_BLOCK_CHAR;
+                }
+            }
+        }
+    }
+}
+
 void tick(TickContext *ctx) {
     TickVariables *v = &ctx->variables;
 
@@ -378,6 +407,7 @@ void tick(TickContext *ctx) {
     }
 
     if (v->i == false) {
+        erase_filled_line(v);
         next_rand(v);
         v->i = v->rand_z % MINO_TYPES_LEN;
         place_mino(v, v->i);
