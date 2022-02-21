@@ -19,15 +19,15 @@ typedef uint16_t word;
 #define WIDTH 4
 #define HEIGHT 20
 
-#define NEG_OFFSET 50
+#define NEG_OFFSET 70
 
 #define LEFT_BUTTON_MASK   (1 << 0)
 #define RIGHT_BUTTON_MASK  (1 << 1)
 #define DOWN_BUTTON_MASK   (1 << 2)
 #define ROTATE_BUTTON_MASK (1 << 3)
 
-#define DEFAULT_ROT_CENTER_X 2
-#define DEFAULT_ROT_CENTER_Y 1
+#define DEFAULT_ROT_CENTER_X 3
+#define DEFAULT_ROT_CENTER_Y 2
 
 #define FALLING_BLOCK_CHAR 'D'
 #define STABLE_BLOCK_CHAR  'O'
@@ -226,8 +226,8 @@ void rotate_pos(TickVariables *v) {
 }
 
 void rotate(TickVariables *v) {
-    for(v->j = 0; v->j < 20; v->j++) {
-        for (v->i = 0; v->i < 4; v->i++) {
+    for(v->i = 0; v->i < 20; v->i++) { // x
+        for (v->j = 0; v->j < 4; v->j++) { // y
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
                 rotate_pos(v);
 
@@ -235,26 +235,20 @@ void rotate(TickVariables *v) {
                     return;
                 }
 
-                if (LCDBUF_XY(v->i, v->j) == STABLE_BLOCK_CHAR) {
+                if (LCDBUF_XY(v->k, v->l) == STABLE_BLOCK_CHAR) {
                     return;
                 }
             }
         }
     }
 
-    for(v->j = 0; v->j < 20; v->j++) {
-        for (v->i = 0; v->i < 4; v->i++) {
+    for(v->i = 0; v->i < 20; v->i++) {
+        for (v->j = 0; v->j < 4; v->j++) {
             if (LCDBUF_XY(v->i, v->j) == FALLING_BLOCK_CHAR) {
                 rotate_pos(v);
                 LCDBUF_XY(v->i, v->j) = AIR_BLOCK_CHAR;
-                LCDBUF_XY(v->k, v->l) = 'Q';
+                LCDBUF_XY(v->k, v->l) =  FALLING_BLOCK_CHAR;
             }
-        }
-    }
-
-    for (v->i = 0; v->i < 80; v->i++) {
-        if (v->lcd_buffer[v->i] == 'Q') {
-            v->lcd_buffer[v->i] = FALLING_BLOCK_CHAR;
         }
     }
 }
@@ -275,8 +269,8 @@ void place_mino(TickVariables *v, byte mino_type) {
             LCDBUF_XY(1, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(2, 2) = FALLING_BLOCK_CHAR;
             LCDBUF_XY(3, 2) = FALLING_BLOCK_CHAR;
-            v->rot_center_x = 3;
-            v->rot_center_y = 2;
+            v->rot_center_x = DEFAULT_ROT_CENTER_X;
+            v->rot_center_y = DEFAULT_ROT_CENTER_Y;
             break;
 
         default:
@@ -333,18 +327,15 @@ void handle_button_press(TickContext *ctx) {
         v->button_state |= LEFT_BUTTON_MASK;
         v->l = 2;
         move_horizontally(v);
-        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
     }
     if (ctx->is_right_pressed && (v->button_state & RIGHT_BUTTON_MASK) == 0) {
         v->button_state |= RIGHT_BUTTON_MASK;
         v->l = 0;
         move_horizontally(v);
-        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
     }
     if (ctx->is_rotate_pressed && (v->button_state & ROTATE_BUTTON_MASK) == 0) {
         v->button_state |= ROTATE_BUTTON_MASK;
         rotate(v);
-        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
     }
     if (ctx->is_down_pressed && (v->button_state & DOWN_BUTTON_MASK) == 0) {
         v->button_state |= DOWN_BUTTON_MASK;
@@ -354,7 +345,6 @@ void handle_button_press(TickContext *ctx) {
         }
         freeze_blocks(v);
         v->tick_count = DROPDOWN_INTERVAL-10;
-        printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
     }
 }
 
@@ -395,7 +385,6 @@ void tick(TickContext *ctx) {
     }
 
     move_down(v);
-    printf("%d,%d\n", v->rot_center_x, v->rot_center_y);
 
     if (!v->k) {
         freeze_blocks(v);
