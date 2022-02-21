@@ -1,36 +1,42 @@
 define OSC 20
 
-define LCD_DREG PORTB
-define LCD_DBIT 0
-
+define LCD_DREG  PORTB
+define LCD_EREG  PORTA
 define LCD_RSREG PORTA
+
+define LCD_BITS  4
+define LCD_DBIT  0
+define LCD_EBIT  3
 define LCD_RSBIT 4
-
-define LCD_EREG PORTA
-define LCD_EBIT 3
-
-define LCD_BITS 4
 define LCD_LINES 4
 
-define LCD_COMMANDUS 2000
 define LCD_DATAUS 50
+define LCD_COMMANDUS 2000
 
-CMCON = %00000111
+CMCON  = %00000111
+ANSEL  = 0
+TRISA  = 0
+TRISB  = %11110000
 ADCON0 = 0
-ANSEL = 0
-TRISA = 0
-TRISB = %11110000
 
-false con 0
-true  con 1
+false  con 0
+true   con 1
 high_  con 1
 low_   con 0
 
-DROPDOWN_INTERVAL  con 60
+NEG_OFFSET      con 70
 
-FALLING_BLOCK_CHAR con "D"
-STABLE_BLOCK_CHAR  con "O"
-AIR_BLOCK_CHAR     con "."
+WIDTH  con 4
+HEIGHT con 20
+
+AIR_BLOCK_CHAR       con "."
+STABLE_BLOCK_CHAR    con "O"
+FALLING_BLOCK_CHAR   con "D"
+
+DROPDOWN_INTERVAL    con 60
+
+DEFAULT_ROT_CENTER_X con 3
+DEFAULT_ROT_CENTER_Y con 2
 
 MINO_TYPES_LEN     con 7
 MINO_TYPE_I        con 0
@@ -42,9 +48,9 @@ MINO_TYPE_S        con 5
 MINO_TYPE_Z        con 6
 
 UP_BUTTON_MASK     con %00000001
+DOWN_BUTTON_MASK   con %00001000
 LEFT_BUTTON_MASK   con %00000010
 RIGHT_BUTTON_MASK  con %00000100
-DOWN_BUTTON_MASK   con %00001000
 
 up_button    var PORTB.4
 left_button  var PORTB.6
@@ -58,6 +64,8 @@ k            var byte
 l            var byte
 button_state var byte
 tick_count   var byte
+rot_center_x var byte
+rot_center_y var byte
 rand_x       var byte
 rand_y       var byte
 rand_z       var byte
@@ -93,6 +101,7 @@ main:
 
 outside_for_1:
     if i == false then
+        gosub erase_filled_line
         gosub next_rand
         i = rand_z // MINO_TYPES_LEN
         gosub place_mino
@@ -127,6 +136,12 @@ move_horizontally:
         next j
     next i
 
+    if l == 0 then
+        rot_center_y = rot_center_y - 1
+    else
+        rot_center_y = rot_center_y + 1
+    endif
+
     for i = 19 to 0 step -1
         if l == 2 then
             j = 3
@@ -152,7 +167,7 @@ move_horizontally_l1:
                 lcd_buffer[(j+l-1)*20+i] = FALLING_BLOCK_CHAR
             endif
         goto move_horizontally_l1 ; continue
-        
+
 move_horizontally_l2:
     next i
     return
@@ -171,6 +186,8 @@ move_down:
         next j
     next i
 
+    rot_center_x = rot_center_x + 1
+
     for i = 19 to 0 step -1
         for j = 0 to 3
             if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR then
@@ -178,6 +195,112 @@ move_down:
                 lcd_buffer[j*20+i+1] = FALLING_BLOCK_CHAR
             endif
         next j
+    next i
+    return
+
+
+; i: X
+; j: Y
+; k(out): rot_X
+; l(out): rot_Y
+r         var byte
+rotated_r var byte
+rotated_m var byte
+
+rotate_pos:
+    r = NEG_OFFSET - j - 1 + rot_center_y
+    if WIDTH - j - 1 >= WIDTH - rot_center_y then
+        r = r + 1
+    endif
+
+    rotated_m = r + HEIGHT - rot_center_x
+    if NEG_OFFSET <= r then
+        rotated_m = rotated_m - 1
+    endif
+
+    k = NEG_OFFSET + HEIGHT - rotated_m - 1
+
+
+    r = NEG_OFFSET - i + rot_center_x - 1
+    if HEIGHT - i - 1 >= HEIGHT - rot_center_x then
+        r = r + 1
+    endif
+
+    if r < NEG_OFFSET then
+        ; r_y is negative
+        rotated_r = r + 2 * (NEG_OFFSET - r)
+    else
+        ; r_y is positive
+        rotated_r = r - 2 * (r - NEG_OFFSET)
+    endif
+
+    rotated_m = rotated_r + WIDTH - rot_center_y
+    if NEG_OFFSET <= rotated_r then
+        rotated_m = rotated_m - 1
+    endif
+
+    l = NEG_OFFSET + WIDTH - rotated_m - 1
+    return
+
+rotate:
+    for i = 0 to 19
+        for j = 0 to 3
+            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR then
+                gosub rotate_pos
+
+                if k >= 20 || l >= 4 then
+                    return
+                endif
+
+                if lcd_buffer[l*20+k] == STABLE_BLOCK_CHAR then
+                    return
+                endif
+            endif
+        next j
+    next i
+
+    for i = 0 to 19
+        for j = 0 to 3
+            if lcd_buffer[j*20+i] == FALLING_BLOCK_CHAR then
+                gosub rotate_pos
+                lcd_buffer[j*20+i] = AIR_BLOCK_CHAR
+                lcd_buffer[l*20+k] = FALLING_BLOCK_CHAR
+            endif
+        next j
+    next i
+    return
+
+
+erase_filled_line:
+    for i = 19 to 0 step -1
+        k = true
+        for j = 0 to 3
+            if lcd_buffer[j*20+i] = AIR_BLOCK_CHAR then
+                k = false
+                goto erase_filled_line_l1 ; break
+            endif
+        next j
+
+        erase_filled_line_l1:
+        if k == false then
+            goto erace_filled_line_l2 ; continue
+        endif
+
+        for j = 0 to 3
+            lcd_buffer[j*20+i] = AIR_BLOCK_CHAR
+        next j
+
+
+        for k = i to 1 step -1
+            for l = 0 to 3
+                if lcd_buffer[l*20+(k-1)] != AIR_BLOCK_CHAR then
+                    lcd_buffer[l*20+k] = lcd_buffer[l*20+(k-1)]
+                    lcd_buffer[l*20+(k-1)] = AIR_BLOCK_CHAR
+                endif
+            next l
+        next k
+
+        erace_filled_line_l2:
     next i
     return
 
@@ -229,11 +352,15 @@ place_mino:
             lcd_buffer[1+20*2] = FALLING_BLOCK_CHAR
             lcd_buffer[2+20*2] = FALLING_BLOCK_CHAR
             lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
+            rot_center_x = DEFAULT_ROT_CENTER_X
+            rot_center_y = DEFAULT_ROT_CENTER_Y
 
         case else
             lcd_buffer[2+20*2] = FALLING_BLOCK_CHAR
             lcd_buffer[3+20*2] = FALLING_BLOCK_CHAR
             lcd_buffer[3+20*1] = FALLING_BLOCK_CHAR
+            rot_center_x = DEFAULT_ROT_CENTER_X
+            rot_center_y = DEFAULT_ROT_CENTER_Y
 
             select case i
                 case MINO_TYPE_J
@@ -262,13 +389,14 @@ reset_button_state:
         button_state = button_state & ~RIGHT_BUTTON_MASK
     endif
 
+    if up_button == low_ && (button_state & up_BUTTON_MASK) != 0 then
+        button_state = button_state & ~UP_BUTTON_MASK
+    endif
+
     if down_button == low_ && (button_state & DOWN_BUTTON_MASK) != 0 then
         button_state = button_state & ~DOWN_BUTTON_MASK
     endif
 
-    if up_button == low_ && (button_state & up_BUTTON_MASK) != 0 then
-        button_state = button_state & ~UP_BUTTON_MASK
-    endif
     return
 
 
@@ -283,6 +411,11 @@ handle_button_press:
         button_state = button_state | RIGHT_BUTTON_MASK
         l = 0
         gosub move_horizontally
+    endif
+
+    if up_button == high_ && (button_state & UP_BUTTON_MASK) == 0 then
+        button_state = button_state | UP_BUTTON_MASK
+        gosub rotate
     endif
 
     if down_button == high_ && (button_state & DOWN_BUTTON_MASK) == 0 then
